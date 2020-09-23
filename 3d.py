@@ -1,34 +1,33 @@
 import math
+from datetime import datetime
 
 import pygame
-from datetime import datetime
-from PIL import Image
-import numpy as np
 
 from ray import Ray
 from wall import Wall
 from walls import bounds
 
 pygame.init()
-screen = pygame.display.set_mode((1598, 625), 0, 32)
+screen = pygame.display.set_mode((1601, 601), 0, 32)
 pygame.display.set_caption('Ray casting')
 font = pygame.font.SysFont('consolas', 15)
 pygame.mouse.set_visible(False)
 pygame.mouse.set_cursor(*pygame.cursors.diamond)
 clock = pygame.time.Clock()
 
-img = Image.open("wall.png")
+skyImg = pygame.image.load('sky.png')
 
 rays = []
 scene = []
 walls = [Wall(*b) for b in bounds]
 origin = (400, 300)
-colW = 2
+colW = 4
 fov = 5  # math.radians(72)
-movementS = 4
+movementS = 1.75
 rotateS = 0.03
 mouseSense = 3
 delta = datetime.now()
+blockHeight = 8
 paused = False
 
 distanceToPPlane = 400 / math.tan(math.radians(180 / fov))
@@ -36,8 +35,8 @@ distanceToPPlane = 400 / math.tan(math.radians(180 / fov))
 
 def inp():
 	global origin, delta, paused
-	timedelta = abs(delta - datetime.now()).microseconds / 16666.66
-	if not timedelta: timedelta = 1
+	if not (timedelta := abs(delta - datetime.now()).microseconds / 16666.66):
+		timedelta = 1
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
 			quit()
@@ -53,21 +52,21 @@ def inp():
 	if pygame.mouse.get_pressed()[0]:
 		origin = pygame.mouse.get_pos()
 	mouseX = pygame.mouse.get_pos()[0]
-	if abs(mouseX - 1200) > 1 and not paused:
+	if abs(mouseX - 1200) > 0 and not paused:
 		for r in rays:
-			r.direction = rotate((0, 0), r.direction, (mouseX - 1200) / 3200 * mouseSense * timedelta)
+			r.direction = rotate((0, 0), r.direction, (mouseX - 1200) / 3200 * mouseSense)
 	d = norm(tuple(map(sum, zip(rays[0].direction, rays[-1].direction))), movementS * timedelta)
 	nextPos = origin
 	if pygame.key.get_pressed()[119]:
-		nextPos = tuple(map(sum, zip(origin, d)))
+		nextPos = tuple(map(sum, zip(nextPos, d)))
 	if pygame.key.get_pressed()[115]:
-		nextPos = tuple(map(sum, zip(origin, rotate((0, 0), d, math.radians(180)))))
+		nextPos = tuple(map(sum, zip(nextPos, rotate((0, 0), d, math.radians(180)))))
 	if pygame.key.get_pressed()[97]:
-		nextPos = tuple(map(sum, zip(origin, rotate((0, 0), d, math.radians(-90)))))
+		nextPos = tuple(map(sum, zip(nextPos, rotate((0, 0), d, math.radians(-90)))))
 	if pygame.key.get_pressed()[100]:
-		nextPos = tuple(map(sum, zip(origin, rotate((0, 0), d, math.radians(90)))))
-	if 0 < nextPos[0] < 799 and 0 < nextPos[1] < 599:
-		origin = nextPos
+		nextPos = tuple(map(sum, zip(nextPos, rotate((0, 0), d, math.radians(90)))))
+	nextPos = (constrain(nextPos[0], 1, 798), constrain(nextPos[1], 1, 598))
+	origin = nextPos
 
 	if pygame.key.get_pressed()[275]:
 		for r in rays:
@@ -81,17 +80,20 @@ def inp():
 def dist(x1, y1, x2, y2):
 	return math.sqrt(abs(x1 - x2) ** 2 + abs(y1 - y2) ** 2)
 
+
 def ang(a, b):
 	dotp = sum(map(lambda x: x[0] * x[1], zip(a, b)))
 	m1 = math.sqrt(a[0] ** 2 + a[1] ** 2)
 	m2 = math.sqrt(b[0] ** 2 + b[1] ** 2)
 	if not m1 * m2: return 0
-	return np.arccos(dotp / (m1 * m2))
+	return dotp / (m1 * m2)
+
 
 def constrain(value, min, max):
 	if value < min: value = min
 	if value > max: value = max
 	return value
+
 
 def norm(a, div):
 	v = math.sqrt(a[0] ** 2 + a[1] ** 2) / div
@@ -103,6 +105,7 @@ def norm(a, div):
 def getPoints1(r, n):
 	return [(math.cos(2 * math.pi / n * x) * r, math.sin(2 * math.pi / n * x) * r) for x in range(0, n + 1)][
 		   :int(n // fov)]
+
 
 def getPoints(y, n):
 	a = []
@@ -127,8 +130,6 @@ def translate(value, leftMin, leftMax, rightMin, rightMax):
 	return rightMin + (valueScaled * rightSpan)
 
 
-'''for i in getPoints(500, 800 // colW):
-	rays.append(Ray(*origin, i))'''
 for i in getPoints1(500, 800 // colW * fov):
 	rays.append(Ray(*origin, i))
 
@@ -136,7 +137,7 @@ for i in getPoints1(500, 800 // colW * fov):
 def loop():
 	global origin, scene
 	scene = []
-	looking = norm(tuple(map(sum, zip(rays[0].direction, rays[-1].direction))), 250)
+	looking = norm(tuple(map(sum, zip(rays[0].direction, rays[-1].direction))), 1)
 	for r in rays:
 		r.pos = origin
 		r.closest = None
@@ -151,16 +152,21 @@ def loop():
 					wall = b
 		if r.closest:
 			cl = tuple(map(lambda x: x[0] - x[1], zip(r.closest, origin)))
-			a = np.cos(ang(looking, cl))
+			a = ang(looking, cl)
 			d = dist(*origin, *r.closest)
-			scene.append((d * a, wall.color))
-	clock.tick(120)
+			if r.closest[0] % 25 == 0:
+				spriteIndex = r.closest[1] % 25
+			else:
+				spriteIndex = r.closest[0] % 25
+			sprite = wall.sprite
+			scene.append((d * a, wall.color, spriteIndex, sprite))
+
 
 def draw():
 	global scene
 	screen.fill((0, 0, 0))
-	pygame.draw.rect(screen, (104, 104, 104), ((800, 300), (799, 300)))
-
+	pygame.draw.rect(screen, (50, 70, 70), ((800, 300), (799, 300)))
+	screen.blit(skyImg, (800, 0))
 	for r in rays:
 		if r.closest:
 			pygame.draw.line(screen, (200, 200, 200), tuple(map(int, r.pos)), r.closest)
@@ -168,19 +174,29 @@ def draw():
 		b.show(screen)
 
 	for c in range(len(scene)):
-		h = constrain(60 / scene[c][0] * distanceToPPlane, 0, 300)
-		b = translate(h, 0, 300, 0, 1)
+		h = int(constrain(blockHeight / scene[c][0] * distanceToPPlane, 0, 300))
+		# b = translate(constrain(h * 5, 0, 300), 0, 300, 0.1, 0.9)
+		b = translate(scene[c][2], 0, 24, 0, 4)
 		try:
-			pygame.draw.rect(screen, tuple(map(lambda x: x[0] * x[1], zip((b, b, b), scene[c][1]))),
-							((800 + colW * c, 300 - h), (colW, 2 * h)))
+			'''pygame.draw.rect(screen, tuple(map(lambda x: x[0] * x[1], zip((b, b, b), scene[c][1]))),
+							((800 + colW * c, 300 - h), (colW, 2 * h)))'''
+			# pygame.draw.rect(screen, (b, b, b), ((800 + colW * c + 1, 300 - h), (colW, 2 * h)))
+			# screen.blit(wallImg, (0, 0), (0, 0, 5, 25))
+			img = pygame.transform.scale(scene[c][3], (100, 2 * h))
+			# screen.blit(img, (0, 0))
+			screen.blit(img, (800 + colW * c + 1, 300 - h), (24 * b, 0, 4, 2 * h))
+		# screen.blit(font.render(str(b)))
 		except TypeError:
 			pass
-	looking = norm(tuple(map(sum, zip(rays[0].direction, rays[-1].direction))), 500)
-	pygame.draw.line(screen, (0, 255, 0), tuple(map(int, origin)), tuple(map(lambda x: int(sum(x)), zip(origin, looking))), 3)
+	looking = norm(tuple(map(sum, zip(rays[0].direction, rays[-1].direction))), 50)
+	pygame.draw.line(screen, (0, 255, 0), tuple(map(int, origin)),
+					 tuple(map(lambda x: int(sum(x)), zip(origin, looking))), 3)
 	screen.blit(font.render(str(int(clock.get_fps())), True, (0, 255, 0)), (10, 10))
 	pygame.display.update()
+
 
 while True:
 	inp()
 	loop()
 	draw()
+	clock.tick(144)

@@ -34,7 +34,11 @@ mainRays = []
 rightRays = []
 leftRays = []
 
-verts = [i[:2] for i in bounds]
+verts = []
+for i in bounds:
+	verts.append(i[:2])
+	verts.append(i[2:])
+verts = [list(x) for x in {(tuple(e)) for e in verts}]
 walls = [Wall(*b) for b in bounds]
 origin = (0, 0)
 offset = 0.00001
