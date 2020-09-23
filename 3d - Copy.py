@@ -17,8 +17,6 @@ pygame.mouse.set_visible(False)
 pygame.mouse.set_cursor(*pygame.cursors.diamond)
 clock = pygame.time.Clock()
 
-img = Image.open("wall.png")
-
 rays = []
 scene = []
 walls = [Wall(*b) for b in bounds]

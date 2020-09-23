@@ -6,6 +6,7 @@ class Ray:
 
 	# noinspection PyTupleAssignmentBalance
 	def cast(self, wall):
+
 		x1, y1, x2, y2 = *wall.a, *wall.b
 		x3, y3, x4, y4 = *self.pos, *map(sum, zip(self.pos, self.direction))
 
