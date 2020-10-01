@@ -1,5 +1,8 @@
 import pygame
 
+pygame.init()
+screen = pygame.display.set_mode((1600, 601), 0, 32)
+
 bounds1 = (
 	[150, 100, 100, 350],
 	[150, 450, 450, 500],
@@ -21,8 +24,15 @@ white = (200, 200, 200)
 yellow = (200, 200, 50)
 purple = (80, 20, 115)
 
-wall_orange = pygame.image.load('wall.png')
-wall_blue = pygame.image.load('wall_blue.png')
+wall_orange = pygame.image.load('walls/wall.png').convert()
+wall_blue = pygame.image.load('walls/wall_blue.png').convert()
+wall_green = pygame.image.load('walls/wall_green.png').convert()
+wall_red = pygame.image.load('walls/wall_red_borderless.png').convert()
+wall_yellow = [
+	pygame.image.load('walls/wall_yellow_left.png').convert(),
+	pygame.image.load('walls/wall_yellow_center.png').convert(),
+	pygame.image.load('walls/wall_yellow_right.png').convert()
+]
 
 bounds2 = (
 	# 1
@@ -81,13 +91,15 @@ bounds3 = (
 
 bounds = (
 	# 1
-	[400, 400, 500, 400, green, wall_orange],
+	[400, 400, 425, 400, green, wall_yellow[0]],
+	[425, 400, 500, 400, green, wall_yellow[1]],
 	# 2
-	[500, 400, 500, 500, green, wall_orange],
+	[500, 400, 500, 475, green, wall_yellow[1]],
+	[500, 475, 500, 500, green, wall_yellow[2]],
 	# 3
 	[700, 500, 700, 600, green, wall_orange],
 	# 4
-	[500, 0, 500, 300, green, wall_orange],
+	[500, 0, 500, 300, green, wall_green],
 	# 5
 	[600, 100, 700, 100, green, wall_orange],
 	# 6
@@ -104,12 +116,12 @@ bounds = (
 	[600, 500, 600, 300, green, wall_orange],
 
 	# shp 1
-	[100, 100, 225, 100, blue, wall_orange],
-	[225, 100, 225, 125, blue, wall_orange],
-	[225, 125, 175, 125, blue, wall_orange],
-	[175, 125, 175, 200, blue, wall_orange],
-	[175, 200, 100, 200, blue, wall_orange],
-	[100, 200, 100, 100, blue, wall_orange],
+	[100, 100, 225, 100, blue, wall_red],
+	[225, 100, 225, 125, blue, wall_red],
+	[225, 125, 175, 125, blue, wall_red],
+	[175, 125, 175, 200, blue, wall_red],
+	[175, 200, 100, 200, blue, wall_red],
+	[100, 200, 100, 100, blue, wall_red],
 
 	# shp 2
 	[100, 300, 125, 300, red, wall_orange],

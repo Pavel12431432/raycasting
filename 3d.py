@@ -8,21 +8,17 @@ from wall import Wall
 from walls import bounds
 
 pygame.init()
-screen = pygame.display.set_mode((1601, 601), 0, 32)
+screen = pygame.display.set_mode((1600, 601), 0, 32)
 pygame.display.set_caption('Ray casting')
 font = pygame.font.SysFont('consolas', 15)
 pygame.mouse.set_visible(False)
-pygame.mouse.set_cursor(*pygame.cursors.diamond)
 clock = pygame.time.Clock()
 
-skyImg = pygame.image.load('sky.png')
-
-rays = []
 scene = []
 walls = [Wall(*b) for b in bounds]
 origin = (400, 300)
-colW = 4
-fov = 5  # math.radians(72)
+colW = 2
+fov = 5
 movementS = 1.75
 rotateS = 0.03
 mouseSense = 3
@@ -65,7 +61,7 @@ def inp():
 		nextPos = tuple(map(sum, zip(nextPos, rotate((0, 0), d, math.radians(-90)))))
 	if pygame.key.get_pressed()[100]:
 		nextPos = tuple(map(sum, zip(nextPos, rotate((0, 0), d, math.radians(90)))))
-	nextPos = (constrain(nextPos[0], 1, 798), constrain(nextPos[1], 1, 598))
+	nextPos = (min(max(nextPos[0], 1), 798), min(max(nextPos[1], 1), 598))
 	origin = nextPos
 
 	if pygame.key.get_pressed()[275]:
@@ -85,14 +81,7 @@ def ang(a, b):
 	dotp = sum(map(lambda x: x[0] * x[1], zip(a, b)))
 	m1 = math.sqrt(a[0] ** 2 + a[1] ** 2)
 	m2 = math.sqrt(b[0] ** 2 + b[1] ** 2)
-	if not m1 * m2: return 0
-	return dotp / (m1 * m2)
-
-
-def constrain(value, min, max):
-	if value < min: value = min
-	if value > max: value = max
-	return value
+	return 0 if not m1 * m2 else dotp / (m1 * m2)
 
 
 def norm(a, div):
@@ -102,36 +91,28 @@ def norm(a, div):
 	return a[0] / v, a[1] / v
 
 
-def getPoints1(r, n):
+def get_points(r, n):
 	return [(math.cos(2 * math.pi / n * x) * r, math.sin(2 * math.pi / n * x) * r) for x in range(0, n + 1)][
 		   :int(n // fov)]
 
 
-def getPoints(y, n):
-	a = []
-	x = 2 * (y * math.sin(fov / 2) / math.sin(math.pi / 2 - fov / 2)) / (n - 1)
-	for i in range(- n // 2, n // 2 + 1):
-		a.append((x * i, y))
-	return sorted(a, key=lambda x: -x[0])
-
-
-def rotate(origin, point, angle):
-	ox, oy = origin
+def rotate(o, point, angle):
+	ox, oy = o
 	px, py = point
 	qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
 	qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
 	return qx, qy
 
 
-def translate(value, leftMin, leftMax, rightMin, rightMax):
-	leftSpan = leftMax - leftMin
-	rightSpan = rightMax - rightMin
-	valueScaled = float(value - leftMin) / float(leftSpan)
-	return rightMin + (valueScaled * rightSpan)
+def translate(value, left_min, left_max, right_min, right_max):
+	leftSpan = left_max - left_min
+	rightSpan = right_max - right_min
+	valueScaled = float(value - left_min) / float(leftSpan)
+	return right_min + (valueScaled * rightSpan)
 
 
-for i in getPoints1(500, 800 // colW * fov):
-	rays.append(Ray(*origin, i))
+rays = [Ray(*origin, i) for i in get_points(500, 800 // colW * fov)]
+angle_between_rays = math.cos(math.radians(360 / fov / len(rays)))
 
 
 def loop():
@@ -154,10 +135,7 @@ def loop():
 			cl = tuple(map(lambda x: x[0] - x[1], zip(r.closest, origin)))
 			a = ang(looking, cl)
 			d = dist(*origin, *r.closest)
-			if r.closest[0] % 25 == 0:
-				spriteIndex = r.closest[1] % 25
-			else:
-				spriteIndex = r.closest[0] % 25
+			spriteIndex = r.closest[1] % 25 if not r.closest[0] % 25 else r.closest[0] % 25
 			sprite = wall.sprite
 			scene.append((d * a, wall.color, spriteIndex, sprite))
 
@@ -165,8 +143,11 @@ def loop():
 def draw():
 	global scene
 	screen.fill((0, 0, 0))
+	pygame.draw.rect(screen, (170, 170, 170), ((800, 0), (799, 300)))
 	pygame.draw.rect(screen, (50, 70, 70), ((800, 300), (799, 300)))
-	screen.blit(skyImg, (800, 0))
+
+	looking = norm(tuple(map(sum, zip(rays[0].direction, rays[-1].direction))), 50)
+
 	for r in rays:
 		if r.closest:
 			pygame.draw.line(screen, (200, 200, 200), tuple(map(int, r.pos)), r.closest)
@@ -174,21 +155,24 @@ def draw():
 		b.show(screen)
 
 	for c in range(len(scene)):
-		h = int(constrain(blockHeight / scene[c][0] * distanceToPPlane, 0, 300))
-		# b = translate(constrain(h * 5, 0, 300), 0, 300, 0.1, 0.9)
-		b = translate(scene[c][2], 0, 24, 0, 4)
-		try:
-			'''pygame.draw.rect(screen, tuple(map(lambda x: x[0] * x[1], zip((b, b, b), scene[c][1]))),
-							((800 + colW * c, 300 - h), (colW, 2 * h)))'''
-			# pygame.draw.rect(screen, (b, b, b), ((800 + colW * c + 1, 300 - h), (colW, 2 * h)))
-			# screen.blit(wallImg, (0, 0), (0, 0, 5, 25))
-			img = pygame.transform.scale(scene[c][3], (100, 2 * h))
-			# screen.blit(img, (0, 0))
-			screen.blit(img, (800 + colW * c + 1, 300 - h), (24 * b, 0, 4, 2 * h))
-		# screen.blit(font.render(str(b)))
-		except TypeError:
-			pass
-	looking = norm(tuple(map(sum, zip(rays[0].direction, rays[-1].direction))), 50)
+		h = round(min(max(blockHeight / scene[c][0] * distanceToPPlane, 0), 300))
+		b = scene[c][2] * colW
+		size = 1
+		if not c == len(scene) - 1:
+			alpha = min(ang(looking, rays[c].direction), ang(looking, rays[c + 1].direction))
+			gamma = math.radians(90) - alpha
+			C = scene[len(scene) // 2][0]
+			size = C * (math.sin(alpha) / math.sin(gamma))
+			alpha = max(ang(looking, rays[c].direction), ang(looking, rays[c + 1].direction))
+			size = C * (math.sin(alpha) / math.sin(gamma)) - size
+			if c == 0:
+				print(alpha, gamma, C, size, scene[c][0])
+
+		# img = pygame.transform.scale(scene[c][3], (round(25 / max(1, size - 1)) * colW, 2 * h))
+		# screen.blit(img, (800 + colW * c + 1, 300 - h), (b / max(1, size), 0, colW, 2 * h))
+		img = pygame.transform.scale(scene[c][3], (25 * colW, 2 * h))
+		screen.blit(img, (800 + colW * c + 1, 300 - h), (b, 0, colW, 2 * h))
+
 	pygame.draw.line(screen, (0, 255, 0), tuple(map(int, origin)),
 					 tuple(map(lambda x: int(sum(x)), zip(origin, looking))), 3)
 	screen.blit(font.render(str(int(clock.get_fps())), True, (0, 255, 0)), (10, 10))
@@ -199,4 +183,4 @@ while True:
 	inp()
 	loop()
 	draw()
-	clock.tick(144)
+	clock.tick(120)

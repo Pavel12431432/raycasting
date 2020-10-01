@@ -1,10 +1,17 @@
-from PIL import Image
-img = Image.open("wall.png")
+import pygame
 
-print(img.format, img.size, img.mode)
+SCREEN_SIZE = 600, 500
+SCREEN = pygame.display.set_mode(SCREEN_SIZE)
+CLOCK = pygame.time.Clock()
+SURFACE = pygame.image.load('walls/wall_green.png')
+SURFACE = pygame.transform.scale2x(pygame.transform.scale2x(SURFACE))
 
-for i in range(0, 26):
-	print(i)
-	box = (i, 0, i + 1, 96)
-	region = img.crop(box)
-	region.save('pics/' + str(i) + '.png')
+while True:
+	for e in pygame.event.get():
+		if e.type == pygame.QUIT:
+			pygame.quit()
+
+	SCREEN.blit(SURFACE, (200 - 25, 300), (0, 50, 65, 100))
+	pygame.draw.circle(SCREEN, (255, 255, 255), (200, 300), 3)
+	pygame.display.flip()
+	CLOCK.tick(30)
