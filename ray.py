@@ -1,14 +1,13 @@
 class Ray:
-	def __init__(self, x, y, direction):
-		self.pos = (x, y)
+	def __init__(self, direction):
 		self.direction = direction
 		self.closest = None
 
 	# noinspection PyTupleAssignmentBalance
-	def cast(self, wall):
+	def cast(self, wall, origin):
 
 		x1, y1, x2, y2 = *wall.a, *wall.b
-		x3, y3, x4, y4 = *self.pos, *map(sum, zip(self.pos, self.direction))
+		x3, y3, x4, y4 = *origin, *map(sum, zip(origin, self.direction))
 
 		if (den := (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)) == 0:
 			return
