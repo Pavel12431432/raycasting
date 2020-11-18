@@ -1,139 +1,43 @@
-import pygame
+walls = [
+	# outer walls
+	*[(x, 0) for x in range(32)],
+	*[(x, 31) for x in range(32)],
+	*[(0, y) for y in range(32)],
+	*[(31, y) for y in range(32)],
 
-pygame.init()
-screen = pygame.display.set_mode((1600, 601), 0, 32)
+	# 1
+	*[(6, y) for y in range(8, 5, -1)],
+	*[(x, 5) for x in range(6, 1, -1)],
+	*[(2, y) for y in range(4, 2, -1)],
+	*[(x, 2) for x in range(2, 10)],
+	*[(9, y) for y in range(3, 9)],
 
-bounds1 = (
-	[150, 100, 100, 350],
-	[150, 450, 450, 500],
-	[250, 50, 450, 50],
-	[500, 50, 599, 300],
-	[599, 300, 450, 400],
-	[200, 350, 450, 200],
+	# 2
+	*[(16, y) for y in range(6, 9)],
+	*[(x, 9) for x in range(16, 22)],
+	*[(21, y) for y in range(8, 1, -1)],
 
-	[0, 0, 600, 0],
-	[600, 0, 600, 600],
-	[600, 600, 0, 600],
-	[0, 600, 0, 0]
-)
+	# 3 smile
+	(20, 25),
+	(20, 26),
+	(19, 26),
+	*[(x, 27) for x in range(19, 10, -1)],
+	*[(x, 28) for x in range(18, 11, -1)],
+	(11, 26),
+	(10, 26),
+	(10, 25),
 
-red = (200, 50, 50)
-green = (50, 200, 50)
-blue = (50, 50, 200)
-white = (200, 200, 200)
-yellow = (200, 200, 50)
-purple = (80, 20, 115)
+	# 4
+	*[(25, y) for y in range(18, 29)],
+	*[(x, 28) for x in range(24, 22, -1)],
 
-wall_orange = pygame.image.load('walls/wall.png').convert()
-wall_blue = pygame.image.load('walls/wall_blue.png').convert()
-wall_green = pygame.image.load('walls/wall_green.png').convert()
-wall_red = pygame.image.load('walls/wall_red_borderless.png').convert()
-wall_yellow = [
-	pygame.image.load('walls/wall_yellow_left.png').convert(),
-	pygame.image.load('walls/wall_yellow_center.png').convert(),
-	pygame.image.load('walls/wall_yellow_right.png').convert()
+	# 1x6 (25, 6)
+	*[(26, y) for y in range(5, 11)],
+
+	# 4x1 (6, 11)
+	*[(x, 11) for x in range(6, 11)],
+
+	# 4x1 (1, 14)
+	*[(x, 14) for x in range(1, 5)],
+
 ]
-
-bounds2 = (
-	# 1
-	[125, 50, 50, 250, red],
-	[50, 250, 125, 325, red],
-	[125, 325, 300, 175, red],
-	[300, 175, 125, 50, red],
-
-	# 2
-	[175, 350, 50, 525, yellow],
-	[50, 525, 225, 475, yellow],
-	[225, 475, 175, 350, yellow],
-
-	# 3
-	# [325, 350, 250, 500],
-	# [250, 500, 525, 550],
-	# [525, 550, 450, 400],
-	# [450, 400, 325, 350],
-
-	# 4
-	[625, 450, 600, 500, white],
-	[600, 500, 725, 500, white],
-	[725, 500, 625, 450, white],
-
-	# 5
-	[650, 125, 575, 175, blue],
-	[575, 175, 575, 325, blue],
-	[575, 325, 750, 175, blue],
-	[750, 175, 650, 125, blue],
-
-	# 6
-	# 20, 2, 19, 5, 31, 1, 20, 2
-	[500, 50, 475, 125, purple],
-	[475, 125, 775, 25, purple],
-	[775, 25, 500, 50, purple],
-
-	# edges
-	[0, 0, 799, 0, green],
-	[799, 0, 799, 599, green],
-	[799, 599, 0, 599, green],
-	[0, 599, 0, 0, green]
-)
-
-bounds3 = (
-	[125, 50, 250, 50, red],
-	[250, 50, 250, 150, red],
-	[250, 150, 125, 150, red],
-	[125, 150, 125, 50, red],
-
-	# edges
-	[0, 0, 799, 0, white],
-	[799, 0, 799, 599, white],
-	[799, 599, 0, 599, white],
-	[0, 599, 0, 0, white]
-)
-
-bounds = (
-	# 1
-	[400, 400, 425, 400, green, wall_yellow[0]],
-	[425, 400, 500, 400, green, wall_yellow[1]],
-	# 2
-	[500, 400, 500, 475, green, wall_yellow[1]],
-	[500, 475, 500, 500, green, wall_yellow[2]],
-	# 3
-	[700, 500, 700, 600, green, wall_orange],
-	# 4
-	[500, 0, 500, 300, green, wall_green],
-	# 5
-	[600, 100, 700, 100, green, wall_orange],
-	# 6
-	[600, 100, 600, 200, green, wall_orange],
-	# 7
-	[600, 200, 700, 200, green, wall_orange],
-	# 8
-	[700, 200, 700, 300, green, wall_orange],
-	# 9
-	[700, 300, 800, 300, green, wall_orange],
-	# 10
-	[600, 400, 700, 400, green, wall_orange],
-	# 11
-	[600, 500, 600, 300, green, wall_orange],
-
-	# shp 1
-	[100, 100, 225, 100, blue, wall_red],
-	[225, 100, 225, 125, blue, wall_red],
-	[225, 125, 175, 125, blue, wall_red],
-	[175, 125, 175, 200, blue, wall_red],
-	[175, 200, 100, 200, blue, wall_red],
-	[100, 200, 100, 100, blue, wall_red],
-
-	# shp 2
-	[100, 300, 125, 300, red, wall_orange],
-	[125, 300, 200, 400, red, wall_orange],
-	[200, 400, 125, 500, red, wall_orange],
-	# [125, 300, 125, 500, red],
-	[125, 500, 100, 500, red, wall_orange],
-	[100, 500, 100, 300, red, wall_orange],
-
-	# edges
-	[0, 0, 800, 0, white, wall_blue],
-	[800, 0, 800, 600, white, wall_blue],
-	[800, 600, 0, 600, white, wall_blue],
-	[0, 600, 0, 0, white, wall_blue]
-)

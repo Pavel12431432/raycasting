@@ -20,8 +20,7 @@ angle_between_rays = player_fov / projection_plane_dimensions[0]
 rotation_speed = 1.5
 z_rotation_speed = 3
 vertical_speed = 0.5
-movement_speed = 5
-grid_size = (32, 32)
+movement_speed = 2
 
 pygame.init()
 screen = pygame.display.set_mode(projection_plane_dimensions)
@@ -29,7 +28,7 @@ pygame.display.set_caption('Ray casting')
 font = pygame.font.SysFont('consolas', 13)
 clock = pygame.time.Clock()
 
-bricks_img = pygame.image.load('tiles/tile' + str(6).zfill(2) + '.png').convert()
+bricks_img = pygame.image.load('tiles/tile' + str(7).zfill(2) + '.png').convert()
 floor_img = pygame.image.load('floortile.png').convert()
 ceiling_img = pygame.image.load('floortile.png').convert()
 
@@ -38,7 +37,7 @@ wall_imgs = [pygame.transform.scale(bricks_img, (64, i)) for i in range(2001)]
 
 floor_imgs = [pygame.transform.scale(floor_img, (i, 64)) for i in range(2001)]
 
-grid = [[False] * grid_size[1] for _ in range(grid_size[0])]
+grid = [[False] * 8 for _ in range(8)]
 for wall in walls:
 	grid[wall[0]][wall[1]] = True
 
@@ -82,13 +81,13 @@ def inp():
 		nextPos = tuple(map(sum, zip(nextPos, direction.rotate(90))))
 	if pygame.key.get_pressed()[ord('d')]:
 		nextPos = tuple(map(sum, zip(nextPos, direction.rotate(270))))
-	player_pos = min(max(nextPos[0], 65), 2048 - 65), min(max(nextPos[1], 65), 2048 - 65)
+	player_pos = min(max(nextPos[0], 65), 448), min(max(nextPos[1], 65), 448)
 	delta = datetime.now()
 
 
 def check_wall(grid_coordinate):
 	try:
-		return grid[int(grid_coordinate[1])][int(grid_coordinate[0])]
+		return grid[int(grid_coordinate[0])][int(grid_coordinate[1])]
 	except IndexError:
 		return False
 
@@ -96,13 +95,14 @@ def check_wall(grid_coordinate):
 def calculate_distance(point_a, point_b):
 	try:
 		return (point_a[0] - point_b[0]) ** 2 + (point_a[1] - point_b[1]) ** 2
-	except (IndexError, TypeError):
+	except IndexError:
 		return float('inf')
 
 
 while True:
 	screen.fill((0, 0, 0))
 
+	floor_wall_intersection_points = {}
 	angle = (player_view_angle - player_fov // 2) % 360
 
 	for column in range(projection_plane_dimensions[0]):
@@ -129,10 +129,10 @@ while True:
 			hit_horizontal = A
 		else:
 			offset[0] = - offset[1] / tan_angle
-			for i in range(1, 30):
+			for i in range(1, 8):
 				point = [min(max(A[0] + offset[0] * i, -10000), 10000), min(max(A[1] + offset[1] * i, -10000), 10000)]
 				grid_coordinate_point = point[0] // 64, point[1] // 64
-				if check_wall(grid_coordinate_point) or not (0 < point[0] < 2048 and 0 < point[1] < 2048):
+				if check_wall(grid_coordinate_point) or not (0 < point[0] < 512 and 0 < point[1] < 512):
 					hit_horizontal = point
 					break
 
@@ -154,21 +154,22 @@ while True:
 				hit_vertical = B
 		else:
 			offset[1] = -offset[0] * tan_angle
-			for i in range(1, 30):
+			for i in range(1, 8):
 				point = [min(max(B[0] + offset[0] * i, -10000), 10000), min(max(B[1] + offset[1] * i, -10000), 10000)]
 				grid_coordinate_point = point[0] // 64, point[1] // 64
-				if check_wall(grid_coordinate_point) or not (0 < point[0] < 2048 and 0 < point[1] < 2048):
-					hit_vertical = point
+				if check_wall(grid_coordinate_point) or not (0 < point[0] < 512 and 0 < point[1] < 512):
+					if calculate_distance(player_pos, point) < calculate_distance(player_pos, closest):
+						hit_vertical = point
 					break
 
-		if hit_horizontal or hit_vertical:
-			if min(hit_vertical, hit_horizontal, key=lambda x: calculate_distance(x, player_pos)) == hit_vertical:
-				closest = hit_vertical
-				bitmap_offset = hit_vertical[1] % 64
-			elif min(hit_vertical, hit_horizontal, key=lambda x: calculate_distance(x, player_pos)) == hit_horizontal:
-				closest = hit_horizontal
-				bitmap_offset = hit_horizontal[0] % 64
+		if min(hit_vertical, hit_horizontal, key=lambda x: calculate_distance(x, player_pos)) == hit_vertical:
+			closest = hit_vertical
+			bitmap_offset = hit_vertical[1] % 64
+		else:
+			closest = hit_horizontal
+			bitmap_offset = hit_horizontal[0] % 64
 
+		if closest:
 			# draw column
 			beta = (player_view_angle - angle) % 360
 			dist = math.sqrt(calculate_distance(closest, player_pos)) * math.cos(math.radians(beta))
@@ -178,10 +179,14 @@ while True:
 			bottom_of_wall = int(ratio * player_height + projection_plane_center_y)
 			top_of_wall = bottom_of_wall - scale
 
-			# pygame.draw.circle(screen, (255, 255, 255), (column, bottom_of_wall), 1)
-			# pygame.draw.line(screen, (255, 255, 255), (int(player_pos[1] // 16), int(player_pos[0] // 16)), (int(closest[1] // 16), int(closest[0] // 16)))
-			pygame.draw.line(screen, (200, 200, 200), (column, top_of_wall), (column, bottom_of_wall))
-			# screen.blit(wall_imgs[int(scale)], (column, top_of_wall), (bitmap_offset, 0, 1, scale))
+			try:
+				floor_wall_intersection_points[bottom_of_wall].append(column)
+			except KeyError:
+				floor_wall_intersection_points[bottom_of_wall] = [column]
+
+			pygame.draw.circle(screen, (255, 255, 255), (column, bottom_of_wall), 1)
+			pygame.draw.line(screen, (255, 255, 255), (int(player_pos[1] // 4), int(player_pos[0] // 4)), (int(closest[1] // 4), int(closest[0] // 4)))
+			screen.blit(wall_imgs[int(scale)], (column, top_of_wall), (bitmap_offset, 0, 1, scale))
 
 		# if not column % 1:
 		#
@@ -217,14 +222,20 @@ while True:
 
 		angle = (angle + angle_between_rays) % 360
 
-	shrunk_player_pos = int(player_pos[1] // 16), int(player_pos[0] // 16)
+	shrunk_player_pos = int(player_pos[1] // 4), int(player_pos[0] // 4)
 	pygame.draw.circle(screen, (50, 200, 50), shrunk_player_pos, 4)
 	for wall in walls:
-		pygame.draw.rect(screen, (200, 50, 50), ((wall[0] * 4, wall[1] * 4), (4, 4)))
+		pygame.draw.rect(screen, (200, 50, 50), ((wall[0] * 16, wall[1] * 16), (16, 16)))
 	direction = pygame.math.Vector2()
 	direction.from_polar((10, player_view_angle))
 	pygame.draw.line(screen, (50, 200, 50), shrunk_player_pos,
 					 tuple(map(lambda x: int(sum(x)), zip(direction.rotate(90), shrunk_player_pos))), 3)
+
+	# for row in floor_wall_intersection_points:
+	# 	left, right = min(floor_wall_intersection_points[row]), max(floor_wall_intersection_points[row])
+	# 	if abs(left - right) > 20:
+	# 		screen.blit(floor_imgs[min(abs(left - right), 2000)], (left, row), (0, row % 64, min(abs(left - right), 2000), 1))
+	# 		# pygame.draw.line(screen, (50, 50, 250), (left, row), (right, row))
 
 
 
